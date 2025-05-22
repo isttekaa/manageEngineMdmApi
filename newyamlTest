@@ -1,0 +1,262 @@
+openapi: 3.0.0
+info:
+  title: ManageEngine MDM API (Banocan Edition)
+  version: 1.0.0
+  description: |
+    Bu API, kullanıcı girişini, MFA doğrulamasını ve token alımını içerir.
+    Ardından cihaz listeleme, güncelleme, konum alma, yeniden başlatma ve kapatma işlemleri yapılabilir.
+    Tüm yetkili isteklerde `Authorization` header'ı kullanılmalıdır.
+    Örnek: Authorization: Zoho-oauthtoken ABC123XYZ
+
+servers:
+  - url: https://api.manageengine.com/mobile-device-management
+
+security:
+  - CustomAuth: []
+
+components:
+  securitySchemes:
+    CustomAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+
+  schemas:
+    LoginRequest:
+      type: object
+      required: [username, password, auth_type, domainName]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+          description: Base64 encoded password
+        auth_type:
+          type: string
+        domainName:
+          type: string
+
+    LoginResponse:
+      type: object
+      properties:
+        mfa_required:
+          type: boolean
+        uniq_user_id:
+          type: string
+        message:
+          type: string
+
+    MfaVerifyRequest:
+      type: object
+      required: [uniq_user_id, otp_code]
+      properties:
+        uniq_user_id:
+          type: string
+        otp_code:
+          type: string
+
+    MfaVerifyResponse:
+      type: object
+      properties:
+        auth_token:
+          type: string
+          example: Zoho-oauthtoken ABC123XYZ
+
+    DeviceSummary:
+      type: object
+      properties:
+        device_id:
+          type: string
+        serial_number:
+          type: string
+        device_name:
+          type: string
+        os_version:
+          type: string
+
+    DevicesResponse:
+      type: object
+      properties:
+        devices:
+          type: array
+          items:
+            $ref: '#/components/schemas/DeviceSummary'
+        delta-token:
+          type: string
+        paging:
+          type: object
+          properties:
+            next:
+              type: string
+
+    DeviceUpdateRequest:
+      type: object
+      properties:
+        device_name:
+          type: string
+          example: "Banocan’ın Macbook’u"
+
+    DeviceDetails:
+      type: object
+      properties:
+        device_id:
+          type: string
+        device_name:
+          type: string
+        serial_number:
+          type: string
+        os_version:
+          type: string
+        model:
+          type: string
+        platform_type:
+          type: string
+        battery_level:
+          type: string
+        build_version:
+          type: string
+        is_supervised:
+          type: boolean
+        user:
+          type: object
+          properties:
+            user_email:
+              type: string
+            user_id:
+              type: string
+            user_name:
+              type: string
+
+paths:
+  /auth/login:
+    post:
+      summary: Kullanıcı girişi (şifre Base64 olmalı)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Giriş başarılı, MFA gerekebilir
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+
+  /auth/mfa/verify:
+    post:
+      summary: MFA doğrulaması yap ve token al
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MfaVerifyRequest'
+      responses:
+        '200':
+          description: Token döner
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MfaVerifyResponse'
+
+  /api/v1/mdm/devices:
+    get:
+      summary: Cihaz listesini getir
+      security:
+        - CustomAuth: []
+      parameters:
+        - in: query
+          name: skip-token
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Cihaz listesi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DevicesResponse'
+
+  /api/v1/mdm/devices/{device_id}:
+    put:
+      summary: Cihaz bilgilerini güncelle
+      security:
+        - CustomAuth: []
+      parameters:
+        - in: path
+          name: device_id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceUpdateRequest'
+      responses:
+        '200':
+          description: Güncellenmiş cihaz bilgisi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceDetails'
+
+  /api/v1/mdm/devices/{device_id}/actions/shutdown:
+    post:
+      summary: Cihazı kapat
+      security:
+        - CustomAuth: []
+      parameters:
+        - in: path
+          name: device_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Kapatma komutu gönderildi
+
+  /api/v1/mdm/devices/{device_id}/actions/restart:
+    post:
+      summary: Cihazı yeniden başlat
+      security:
+        - CustomAuth: []
+      parameters:
+        - in: path
+          name: device_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Yeniden başlatma komutu gönderildi
+
+  /api/v1/mdm/devices/{device_id}/location:
+    get:
+      summary: Cihazın konum bilgisini getir
+      security:
+        - CustomAuth: []
+      parameters:
+        - in: path
+          name: device_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Konum bilgileri döner
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  latitude:
+                    type: string
+                  longitude:
+                    type: string
+                  timestamp:
+                    type: string
