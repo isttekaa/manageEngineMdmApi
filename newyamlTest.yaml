@@ -1,6 +1,6 @@
 openapi: 3.0.0
 info:
-  title: ManageEngine MDM API (Banocan Edition)
+  title: ManageEngine MDM API
   version: 1.0.0
   description: |
     Bu API, kullanıcı girişini, MFA doğrulamasını ve token alımını içerir.
